@@ -1,60 +1,38 @@
-const fs = require("fs/promises");
-const path = require("path");
 const chalk = require("chalk");
-const { array } = require("yargs");
+const Note = require("./models/Note");
 
-const notesPath = path.join(__dirname, "db.json");
+async function addNote(title, owner) {
+  await Note.create({ title, owner });
 
-async function addNote(title) {
-  const notes = await getNotes();
-  const note = {
-    title,
-    id: Date.now().toString(),
-  };
-
-  notes.push(note);
-
-  await saveNotes(notes);
   console.log(chalk.bgGreen("Note was added!"));
 }
 
 async function getNotes() {
-  const notes = await fs.readFile(notesPath, { encoding: "utf-8" });
-  return Array.isArray(JSON.parse(notes)) ? JSON.parse(notes) : [];
+  const notes = await Note.find();
+
+  return notes;
 }
 
-async function saveNotes(notes) {
-  await fs.writeFile(notesPath, JSON.stringify(notes));
-}
+async function removeNote(id, owner) {
+  const result = await Note.deleteOne({ _id: id, owner });
+  if (result.matchedCount === 0) {
+    throw new Error("No note to delete");
+  }
 
-async function printNotes() {
-  const notes = await getNotes();
-
-  console.log(chalk.bgBlue("Here is the list notes:"));
-  notes.forEach((note, id) => {
-    console.log(chalk.blue(note.id, note.title));
-  });
-}
-
-async function removeNote(id) {
-  const notes = await getNotes();
-
-  const filterNotes = notes.filter((note) => note.id !== id);
-
-  await saveNotes(filterNotes);
   console.log(chalk.green("Note has been removed!"));
 }
 
-async function updateNote(noteData) {
-  const notes = await getNotes();
-  const index = notes.findIndex((note) => note.id === noteData.id);
-  if (index >= 0) {
-    notes[index] = { ...notes[index], ...noteData };
-    await saveNotes(notes);
-    console.log(
-      chalk.bgGreen(`Note with id="${noteData.id}" has been updated!`)
-    );
+async function updateNote(noteData, owner) {
+  const result = await Note.updateOne(
+    { _id: noteData.id, owner },
+    { title: noteData.title }
+  );
+
+  if (result.matchedCount === 0) {
+    throw new Error("No note to edit");
   }
+
+  console.log(chalk.bgGreen(`Note with id="${noteData.id}" has been updated!`));
 }
 
 module.exports = {
